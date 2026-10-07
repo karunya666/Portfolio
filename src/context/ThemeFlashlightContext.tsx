@@ -34,12 +34,18 @@ export function ThemeFlashlightProvider({ children }: { children: React.ReactNod
   const [isCmdKOpen, setCmdKOpen] = useState(false);
   const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
 
-  // Ambient sound defaults to unmuted unless user explicitly muted it
+  // Ambient sound defaults to unmuted unless user explicitly clicked mute during this session
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const previouslyMuted = localStorage.getItem("karunya-sound-muted") === "true";
-    if (previouslyMuted) {
+    try {
+      localStorage.removeItem("karunya-sound-muted");
+    } catch {
+      // ignore
+    }
+
+    const isSessionMuted = sessionStorage.getItem("karunya-sound-muted") === "true";
+    if (isSessionMuted) {
       setIsAmbientPlaying(false);
       return;
     }
@@ -47,7 +53,7 @@ export function ThemeFlashlightProvider({ children }: { children: React.ReactNod
     setIsAmbientPlaying(true);
 
     const initSound = () => {
-      if (localStorage.getItem("karunya-sound-muted") !== "true") {
+      if (sessionStorage.getItem("karunya-sound-muted") !== "true") {
         soundManager.toggleAmbient(true);
         setIsAmbientPlaying(true);
       }
@@ -56,6 +62,7 @@ export function ThemeFlashlightProvider({ children }: { children: React.ReactNod
 
     const removeListeners = () => {
       window.removeEventListener("pointerdown", initSound);
+      window.removeEventListener("click", initSound);
       window.removeEventListener("keydown", initSound);
       window.removeEventListener("scroll", initSound);
     };
@@ -69,6 +76,7 @@ export function ThemeFlashlightProvider({ children }: { children: React.ReactNod
 
     // Browsers require a user interaction to unblock Web Audio
     window.addEventListener("pointerdown", initSound, { once: true });
+    window.addEventListener("click", initSound, { once: true });
     window.addEventListener("keydown", initSound, { once: true });
     window.addEventListener("scroll", initSound, { once: true });
 
@@ -145,7 +153,7 @@ export function ThemeFlashlightProvider({ children }: { children: React.ReactNod
     soundManager.toggleAmbient(nextState);
     setIsAmbientPlaying(nextState);
     if (typeof window !== "undefined") {
-      localStorage.setItem("karunya-sound-muted", nextState ? "false" : "true");
+      sessionStorage.setItem("karunya-sound-muted", nextState ? "false" : "true");
     }
   };
 
