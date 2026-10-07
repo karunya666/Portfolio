@@ -77,7 +77,7 @@ class SoundController {
     }
   }
 
-  // Toggle or force ambient celestial sound
+  // Toggle or force calm relaxing ambient sound
   toggleAmbient(force?: boolean): boolean {
     const targetState = force !== undefined ? force : !this.isAmbientPlaying;
     if (targetState) {
@@ -104,29 +104,65 @@ class SoundController {
       // Clean up any stale nodes
       this.cleanupAmbientNodes();
 
-      // Warm low-pass filter to soften the ambient pad
+      // Deeply warm low-pass filter: cut all high frequencies, eliminate all buzzing
       const filter = ctx.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.setValueAtTime(450, ctx.currentTime);
+      filter.frequency.setValueAtTime(280, ctx.currentTime);
+      filter.Q.setValueAtTime(0.5, ctx.currentTime); // gentle slope
 
+      // Master ambient gain with smooth slow fade-in
       this.ambientGain = ctx.createGain();
-      this.ambientGain.gain.setValueAtTime(0.001, ctx.currentTime);
-      this.ambientGain.gain.exponentialRampToValueAtTime(0.07, ctx.currentTime + 1.5);
+      this.ambientGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      this.ambientGain.gain.exponentialRampToValueAtTime(0.032, ctx.currentTime + 3.0);
 
-      // Celestial harmonic chord: C3 (130.8Hz), G3 (196Hz), E4 (329.6Hz)
-      const freqs = [130.81, 196.0, 329.63];
-      this.ambientOscs = freqs.map((f, idx) => {
+      // Tranquil, relaxing Brian Eno style chord:
+      // D3 (146.8Hz), D3 slight detune (147.5Hz), A3 (220.0Hz), D4 (293.6Hz), E4 (329.6Hz)
+      // ALL pure sines — zero harshness, zero buzz
+      const tones = [
+        { freq: 146.83, gain: 0.8 },
+        { freq: 147.65, gain: 0.6 }, // gentle 0.8Hz chorus shimmer
+        { freq: 220.00, gain: 0.7 },
+        { freq: 293.66, gain: 0.5 },
+        { freq: 329.63, gain: 0.35 },
+      ];
+
+      this.ambientOscs = tones.map((t) => {
         const osc = ctx.createOscillator();
-        osc.type = idx === 0 ? "sawtooth" : "sine";
-        osc.frequency.setValueAtTime(f, ctx.currentTime);
-        osc.connect(filter);
+        const toneGain = ctx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(t.freq, ctx.currentTime);
+        toneGain.gain.setValueAtTime(t.gain, ctx.currentTime);
+
+        osc.connect(toneGain);
+        toneGain.connect(filter);
         return osc;
       });
+
+      // Ultra-slow breathing LFO (0.05 Hz = 20-second ocean wave breath)
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      lfo.type = "sine";
+      lfo.frequency.setValueAtTime(0.05, ctx.currentTime); // 20s cycle
+      lfoGain.gain.setValueAtTime(0.008, ctx.currentTime); // subtle breath depth
+
+      lfo.connect(lfoGain);
+      lfoGain.connect(this.ambientGain.gain);
+      lfo.start(ctx.currentTime);
+      this.ambientOscs.push(lfo);
 
       filter.connect(this.ambientGain);
       this.ambientGain.connect(ctx.destination);
 
-      this.ambientOscs.forEach((osc) => osc.start(ctx.currentTime));
+      // Start all sound generators
+      this.ambientOscs.forEach((osc) => {
+        try {
+          osc.start(ctx.currentTime);
+        } catch {
+          // ignore
+        }
+      });
+
       this.isAmbientPlaying = true;
     } catch {
       this.isAmbientPlaying = false;
@@ -136,10 +172,10 @@ class SoundController {
   private stopAmbient() {
     try {
       if (this.ambientGain && this.ctx) {
-        this.ambientGain.gain.linearRampToValueAtTime(0.0001, this.ctx.currentTime + 0.3);
+        this.ambientGain.gain.linearRampToValueAtTime(0.0001, this.ctx.currentTime + 0.6);
         setTimeout(() => {
           this.cleanupAmbientNodes();
-        }, 350);
+        }, 650);
       } else {
         this.cleanupAmbientNodes();
       }
