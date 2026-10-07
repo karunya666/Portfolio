@@ -18,7 +18,7 @@ interface ThemeFlashlightContextType {
 const ThemeFlashlightContext = createContext<ThemeFlashlightContextType>({
   isDark: true,
   isFlashlightOn: false,
-  isAmbientPlaying: true,
+  isAmbientPlaying: false,
   isCmdKOpen: false,
   mousePos: { x: 0, y: 0 },
   toggleTheme: () => {},
@@ -30,59 +30,19 @@ const ThemeFlashlightContext = createContext<ThemeFlashlightContextType>({
 export function ThemeFlashlightProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(true);
   const [isFlashlightOn, setIsFlashlightOn] = useState(false);
-  const [isAmbientPlaying, setIsAmbientPlaying] = useState(true);
+  const [isAmbientPlaying, setIsAmbientPlaying] = useState(false);
   const [isCmdKOpen, setCmdKOpen] = useState(false);
   const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
 
-  // Ambient sound defaults to unmuted unless user explicitly clicked mute during this session
+  // Clean up any stale localStorage mute flag
   useEffect(() => {
     if (typeof window === "undefined") return;
-
     try {
       localStorage.removeItem("karunya-sound-muted");
+      sessionStorage.removeItem("karunya-sound-muted");
     } catch {
       // ignore
     }
-
-    const isSessionMuted = sessionStorage.getItem("karunya-sound-muted") === "true";
-    if (isSessionMuted) {
-      setIsAmbientPlaying(false);
-      return;
-    }
-
-    setIsAmbientPlaying(true);
-
-    const initSound = () => {
-      if (sessionStorage.getItem("karunya-sound-muted") !== "true") {
-        soundManager.toggleAmbient(true);
-        setIsAmbientPlaying(true);
-      }
-      removeListeners();
-    };
-
-    const removeListeners = () => {
-      window.removeEventListener("pointerdown", initSound);
-      window.removeEventListener("click", initSound);
-      window.removeEventListener("keydown", initSound);
-      window.removeEventListener("scroll", initSound);
-    };
-
-    // Try starting immediately
-    try {
-      soundManager.toggleAmbient(true);
-    } catch {
-      // Browsers needing user gesture will trigger via listeners below
-    }
-
-    // Browsers require a user interaction to unblock Web Audio
-    window.addEventListener("pointerdown", initSound, { once: true });
-    window.addEventListener("click", initSound, { once: true });
-    window.addEventListener("keydown", initSound, { once: true });
-    window.addEventListener("scroll", initSound, { once: true });
-
-    return () => {
-      removeListeners();
-    };
   }, []);
 
   // The website is permanently dark mode

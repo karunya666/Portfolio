@@ -123,7 +123,7 @@ export default function Navbar() {
                 >
                   {isAmbientPlaying ? <Volume2 className="w-4 h-4 text-purple-300" /> : <VolumeX className="w-4 h-4" />}
                   <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/95 border border-white/20 text-[10px] text-white px-2 py-0.5 rounded whitespace-nowrap pointer-events-none z-50">
-                    {isAmbientPlaying ? "Mute Ambient" : "Ambient Sound"}
+                    {isAmbientPlaying ? "Mute Sound" : "Play Sound"}
                   </span>
                 </button>
 
